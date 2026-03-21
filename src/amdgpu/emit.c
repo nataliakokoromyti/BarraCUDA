@@ -2052,6 +2052,9 @@ int amdgpu_emit_elf(amd_module_t *A, const char *path)
     ehdr.e_phoff = 0;
     ehdr.e_shoff = shdr_off;
     ehdr.e_flags = A->elf_mach;
+    /* V4 feature flags: XNACK_ANY (bits[9:8]=01) + SRAMECC_ANY (bits[11:10]=01) */
+    if (A->target <= AMD_TARGET_GFX950)
+        ehdr.e_flags |= 0x500;  /* 0x100 | 0x400 */
     ehdr.e_ehsize = 64;
     ehdr.e_phentsize = 0;
     ehdr.e_phnum = 0;
