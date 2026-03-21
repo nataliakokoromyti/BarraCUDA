@@ -1823,8 +1823,8 @@ int amdgpu_emit_elf(amd_module_t *A, const char *path)
                                (1u << tgid_z);         /* TGID_Z_EN */
 
         /* kernel_code_properties */
-        kd.kernel_code_properties = (1u << 0) |  /* ENABLE_SGPR_DISPATCH_PTR */
-                                    (1u << 1);   /* ENABLE_SGPR_KERNARG_PTR */
+        kd.kernel_code_properties = (1u << 1) |  /* ENABLE_SGPR_DISPATCH_PTR */
+                                    (1u << 3);   /* ENABLE_SGPR_KERNARG_SEGMENT_PTR */
 
         /* Write the 64 bytes */
         if (A->code_len + 64 <= AMD_CODE_SIZE) {
