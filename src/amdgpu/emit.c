@@ -1820,6 +1820,14 @@ int amdgpu_emit_elf(amd_module_t *A, const char *path)
                                (1u << 8) |             /* ENABLE_SGPR_WORKGROUP_ID_Y */
                                (1u << 9);              /* ENABLE_SGPR_WORKGROUP_ID_Z */
 
+        /* compute_pgm_rsrc3 — CDNA: set ACCUM_OFFSET so all VGPRs are arch */
+        if (cdna) {
+            /* arch VGPRs = (ACCUM_OFFSET+1)*4, total = (vgpr_blocks+1)*8.
+             * Set ACCUM_OFFSET = (vgpr_blocks+1)*2 - 1 so accum starts past end. */
+            uint32_t accum_off = (vgpr_blocks + 1u) * 2u - 1u;
+            kd.compute_pgm_rsrc3 = accum_off & 0x3Fu;
+        }
+
         /* kernel_code_properties */
         kd.kernel_code_properties = (1u << 1) |  /* ENABLE_SGPR_DISPATCH_PTR */
                                     (1u << 3);   /* ENABLE_SGPR_KERNARG_SEGMENT_PTR */
