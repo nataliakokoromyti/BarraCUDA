@@ -2045,7 +2045,8 @@ int amdgpu_emit_elf(amd_module_t *A, const char *path)
     ehdr.e_ident[5] = 1;    /* ELFDATA2LSB */
     ehdr.e_ident[6] = 1;    /* EV_CURRENT */
     ehdr.e_ident[7] = ELFOSABI_AMDGPU_HSA;
-    ehdr.e_type = 2;        /* ET_EXEC (shared object would be 3) */
+    ehdr.e_ident[8] = 4;    /* ABI version: code object V4 */
+    ehdr.e_type = 1;        /* ET_REL (required for code object V3+) */
     ehdr.e_machine = EM_AMDGPU;
     ehdr.e_version = 1;
     ehdr.e_entry = 0;
