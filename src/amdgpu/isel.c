@@ -61,7 +61,7 @@ static struct {
 
 /* ---- Target Helpers ---- */
 
-static int is_cdna(void) { return S.amd->target <= AMD_TARGET_GFX90A; }
+static int is_cdna(void) { return S.amd->target <= AMD_TARGET_GFX950; }
 
 /* ---- Divergence Analysis ---- */
 

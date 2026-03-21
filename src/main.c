@@ -73,6 +73,8 @@ static void usage(const char *prog)
         "  --amdgpu      Compile to AMDGCN assembly (default: gfx1100)\n"
         "  --amdgpu-bin  Compile to AMDGPU ELF code object (.hsaco)\n"
         "  --gfx90a      Target CDNA 2 (gfx90a, MI250)\n"
+        "  --gfx942      Target CDNA 3 (gfx942, MI300X)\n"
+        "  --gfx950      Target CDNA 4 (gfx950, MI350X)\n"
         "  --gfx1030     Target RDNA 2 (gfx1030)\n"
         "  --gfx1200     Target RDNA 4 (gfx1200)\n"
         "  --no-graphcolor  Force linear scan register allocation\n"
@@ -129,6 +131,12 @@ int main(int argc, char *argv[])
         /* CDNA 2 (GFX9) */
         else if (strcmp(argv[i], "--gfx90a") == 0)
             { amd_target = AMD_TARGET_GFX90A; amd_elfm = 0x3F; amd_chip = "gfx90a"; }
+        /* CDNA 3 (GFX9) */
+        else if (strcmp(argv[i], "--gfx942") == 0)
+            { amd_target = AMD_TARGET_GFX942; amd_elfm = 0x4B; amd_chip = "gfx942"; }
+        /* CDNA 4 (GFX9) */
+        else if (strcmp(argv[i], "--gfx950") == 0)
+            { amd_target = AMD_TARGET_GFX950; amd_elfm = 0x4F; amd_chip = "gfx950"; }
         /* RDNA 2 (GFX10.3) */
         else if (strcmp(argv[i], "--gfx1030") == 0)
             { amd_target = AMD_TARGET_GFX1030; amd_elfm = 0x36; amd_chip = "gfx1030"; }

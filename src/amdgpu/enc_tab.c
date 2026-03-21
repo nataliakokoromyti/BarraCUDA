@@ -177,6 +177,10 @@ const amd_enc_entry_t amd_enc_table[AMD_OP_COUNT] = {
     [AMD_SCRATCH_LOAD_DWORD]     = { AMD_FMT_FLAT_SCR, 0x14, "scratch_load_dword"     },
     [AMD_SCRATCH_STORE_DWORD]    = { AMD_FMT_FLAT_SCR, 0x1A, "scratch_store_dword"    },
 
+    /* MFMA (CDNA only — not supported on RDNA) */
+    [AMD_V_MFMA_F32_16X16X32_F16] = { AMD_FMT_VOP3, 0x00, NULL },
+    [AMD_V_MFMA_F32_32X32X16_F16] = { AMD_FMT_VOP3, 0x00, NULL },
+
     /* Pseudo */
     [AMD_PSEUDO_PHI]             = { AMD_FMT_PSEUDO, 0, "PSEUDO_PHI"  },
     [AMD_PSEUDO_COPY]            = { AMD_FMT_PSEUDO, 0, "PSEUDO_COPY" },
@@ -350,6 +354,10 @@ const amd_enc_entry_t amd_enc_table_gfx10[AMD_OP_COUNT] = {
     /* FLAT_SCR — load renumbered (0x0C), store same */
     [AMD_SCRATCH_LOAD_DWORD]     = { AMD_FMT_FLAT_SCR, 0x0C, "scratch_load_dword"     },
     [AMD_SCRATCH_STORE_DWORD]    = { AMD_FMT_FLAT_SCR, 0x1C, "scratch_store_dword"    },
+
+    /* MFMA (CDNA only — not supported on RDNA) */
+    [AMD_V_MFMA_F32_16X16X32_F16] = { AMD_FMT_VOP3, 0x00, NULL },
+    [AMD_V_MFMA_F32_32X32X16_F16] = { AMD_FMT_VOP3, 0x00, NULL },
 
     /* Pseudo */
     [AMD_PSEUDO_PHI]             = { AMD_FMT_PSEUDO, 0, "PSEUDO_PHI"  },
@@ -538,6 +546,10 @@ const amd_enc_entry_t amd_enc_table_gfx9[AMD_OP_COUNT] = {
     /* FLAT_SCR — same opcodes as FLAT_GBL, differentiated by SEG field */
     [AMD_SCRATCH_LOAD_DWORD]     = { AMD_FMT_FLAT_SCR, 0x14, "scratch_load_dword"     },
     [AMD_SCRATCH_STORE_DWORD]    = { AMD_FMT_FLAT_SCR, 0x1C, "scratch_store_dword"    },
+
+    /* MFMA — CDNA matrix ops (gfx90a/gfx942/gfx950) */
+    [AMD_V_MFMA_F32_16X16X32_F16] = { AMD_FMT_VOP3, 0x54, "v_mfma_f32_16x16x32_f16" },
+    [AMD_V_MFMA_F32_32X32X16_F16] = { AMD_FMT_VOP3, 0x55, "v_mfma_f32_32x32x16_f16" },
 
     /* Pseudo */
     [AMD_PSEUDO_PHI]             = { AMD_FMT_PSEUDO, 0, "PSEUDO_PHI"  },

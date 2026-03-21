@@ -5,7 +5,7 @@
 
 /*
  * AMDGPU backend for BarraCUDA.
- * Targets CDNA 2 (gfx90a), RDNA 2 (gfx1030), RDNA 3 (gfx1100), RDNA 4 (gfx1200).
+ * Targets CDNA 2-4 (gfx90a/gfx942/gfx950), RDNA 2 (gfx1030), RDNA 3 (gfx1100), RDNA 4 (gfx1200).
  * Compiles BIR SSA to AMDGCN machine IR, then emits assembly text
  * or binary ELF code objects (.hsaco).
  * Built with the quiet confidence of someone who reads ISA manuals for fun.
@@ -17,6 +17,8 @@
 
 typedef enum {
     AMD_TARGET_GFX90A,    /* CDNA 2 (MI250, Wave64) */
+    AMD_TARGET_GFX942,    /* CDNA 3 (MI300X, Wave64) */
+    AMD_TARGET_GFX950,    /* CDNA 4 (MI350X, Wave64) */
     AMD_TARGET_GFX1030,   /* RDNA 2 */
     AMD_TARGET_GFX1100,   /* RDNA 3 */
     AMD_TARGET_GFX1200,   /* RDNA 4 */
@@ -54,6 +56,8 @@ typedef enum {
 #define EM_AMDGPU                224
 #define ELFOSABI_AMDGPU_HSA      64
 #define EF_AMDGPU_MACH_AMDGCN_GFX90A   0x3F
+#define EF_AMDGPU_MACH_AMDGCN_GFX942   0x4B
+#define EF_AMDGPU_MACH_AMDGCN_GFX950   0x4F
 #define EF_AMDGPU_MACH_AMDGCN_GFX1030  0x36
 #define EF_AMDGPU_MACH_AMDGCN_GFX1100  0x41
 #define EF_AMDGPU_MACH_AMDGCN_GFX1200  0x48
@@ -257,6 +261,10 @@ typedef enum {
     /* -- FLAT_SCR: scratch memory -- */
     AMD_SCRATCH_LOAD_DWORD,
     AMD_SCRATCH_STORE_DWORD,
+
+    /* -- MFMA: matrix fused multiply-add (CDNA) -- */
+    AMD_V_MFMA_F32_16X16X32_F16,
+    AMD_V_MFMA_F32_32X32X16_F16,
 
     /* -- Pseudo-instructions (eliminated before emit) -- */
     AMD_PSEUDO_PHI,

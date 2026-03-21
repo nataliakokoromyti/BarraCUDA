@@ -343,7 +343,7 @@ static void finalize_reg_counts(const amd_module_t *A, mfunc_t *F)
     if (F->num_vgprs == 0) F->num_vgprs = 1;
 
     if (F->launch_bounds_max > 0 && F->launch_bounds_max < 1024) {
-        int w64 = (A->target <= AMD_TARGET_GFX90A);
+        int w64 = (A->target <= AMD_TARGET_GFX950);
         uint32_t wsz = w64 ? 64u : 32u;
         uint32_t desired_waves = (F->launch_bounds_max + wsz - 1) / wsz;
         if (desired_waves > 0) {
@@ -1394,10 +1394,10 @@ static void print_operand(amd_module_t *A, const moperand_t *op)
     case MOP_SPECIAL:
         switch (op->imm) {
         case AMD_SPEC_VCC:
-            asm_append(A, A->target <= AMD_TARGET_GFX90A ? "vcc" : "vcc_lo");
+            asm_append(A, A->target <= AMD_TARGET_GFX950 ? "vcc" : "vcc_lo");
             break;
         case AMD_SPEC_EXEC:
-            asm_append(A, A->target <= AMD_TARGET_GFX90A ? "exec" : "exec_lo");
+            asm_append(A, A->target <= AMD_TARGET_GFX950 ? "exec" : "exec_lo");
             break;
         case AMD_SPEC_SCC:  asm_append(A, "scc"); break;
         case AMD_SPEC_M0:   asm_append(A, "m0"); break;
@@ -1799,7 +1799,7 @@ int amdgpu_emit_elf(amd_module_t *A, const char *path)
         kd.kernel_code_entry_byte_offset = 256; /* descriptor is 64 bytes, padded to 256 */
 
         /* compute_pgm_rsrc1 — GFX9: VGPR granularity 4, no WGP_MODE/MEM_ORDERED */
-        int cdna = (A->target <= AMD_TARGET_GFX90A);
+        int cdna = (A->target <= AMD_TARGET_GFX950);
         uint32_t vgran = cdna ? 4u : 8u;
         uint32_t vgpr_blocks = (F->num_vgprs > 0)
             ? (uint32_t)((F->num_vgprs + vgran - 1) / vgran - 1) : 0;

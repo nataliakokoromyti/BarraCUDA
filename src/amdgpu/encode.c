@@ -79,7 +79,7 @@ static void emit_dword(amd_module_t *A, uint32_t dw)
 
 const amd_enc_entry_t *get_enc_table(const amd_module_t *A)
 {
-    if (A->target <= AMD_TARGET_GFX90A)
+    if (A->target <= AMD_TARGET_GFX950)
         return amd_enc_table_gfx9;
     if (A->target <= AMD_TARGET_GFX1030)
         return amd_enc_table_gfx10;
@@ -192,7 +192,7 @@ static void encode_smem(amd_module_t *A, const minst_t *mi, uint16_t hw_op)
     if (mi->num_uses > 1)
         offset = mi->operands[mi->num_defs + 1].imm;
 
-    if (A->target <= AMD_TARGET_GFX90A) {
+    if (A->target <= AMD_TARGET_GFX950) {
         /* GFX9 SMEM: 2 dwords
            DW0: [31:26]=110000 [25:18]=OP [17]=IMM [16]=GLC [12:6]=SDATA [5:0]=SBASE
            DW1: [20:0]=OFFSET (when IMM=1) */
@@ -273,7 +273,7 @@ static void encode_vop3(amd_module_t *A, const minst_t *mi, uint16_t hw_op)
                     encode_vsrc(&mi->operands[mi->num_defs + 2], &literal, &need_lit) : 0;
 
     uint32_t dw0, dw1;
-    if (A->target <= AMD_TARGET_GFX90A) {
+    if (A->target <= AMD_TARGET_GFX950) {
         /* GFX9: DW0: [31:26]=110100 [25:16]=OP [7:0]=VDST */
         dw0 = (0x34u << 26) | ((uint32_t)(hw_op & 0x3FF) << 16) |
               (uint32_t)vdst;
@@ -385,7 +385,7 @@ static void encode_flat_global(amd_module_t *A, const minst_t *mi, uint16_t hw_o
         emit_dword(A, dw0);
         emit_dword(A, dw1);
         emit_dword(A, dw2);
-    } else if (A->target <= AMD_TARGET_GFX90A) {
+    } else if (A->target <= AMD_TARGET_GFX950) {
         /* GFX9 FLAT/GLOBAL: 2 dwords (64-bit)
            DW0: [31:26]=0x37 [24:18]=OP(7b) [16]=GLC
                 [15:14]=SEG [12:0]=OFFSET(13b signed)
