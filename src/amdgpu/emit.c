@@ -1798,29 +1798,24 @@ int amdgpu_emit_elf(amd_module_t *A, const char *path)
         kd.kernarg_size = F->kernarg_bytes;
         kd.kernel_code_entry_byte_offset = 256; /* descriptor is 64 bytes, padded to 256 */
 
-        /* compute_pgm_rsrc1 — GFX9: VGPR granularity 4, no WGP_MODE/MEM_ORDERED */
+        /* compute_pgm_rsrc1 — VGPR granularity: 8 for CDNA, 8 for RDNA */
         int cdna = (A->target <= AMD_TARGET_GFX950);
-        uint32_t vgran = cdna ? 4u : 8u;
+        uint32_t vgran = cdna ? 8u : 8u;
         uint32_t vgpr_blocks = (F->num_vgprs > 0)
             ? (uint32_t)((F->num_vgprs + vgran - 1) / vgran - 1) : 0;
         uint32_t sgpr_blocks = (F->num_sgprs > 0) ? (uint32_t)((F->num_sgprs + 7) / 8 - 1) : 0;
         kd.compute_pgm_rsrc1 = (vgpr_blocks & 0x3F) |
                                ((sgpr_blocks & 0xF) << 6) |
-                               (1u << 20);   /* IEEE_MODE */
+                               (1u << 21) |  /* DX10_CLAMP */
+                               (1u << 23);   /* IEEE_MODE */
         if (!cdna) {
             kd.compute_pgm_rsrc1 |= (1u << 26) |  /* WGP_MODE (RDNA only) */
                                     (1u << 27);    /* MEM_ORDERED (RDNA only) */
         }
 
-        /* compute_pgm_rsrc2 — GFX9: TGID at bits 11/12/13 */
-        uint32_t tgid_x = cdna ? 11u : 7u;
-        uint32_t tgid_y = cdna ? 12u : 8u;
-        uint32_t tgid_z = cdna ? 13u : 9u;
+        /* compute_pgm_rsrc2 — V3+: TGID bits are reserved (CP sets them) */
         kd.compute_pgm_rsrc2 = ((F->scratch_bytes > 0) ? 1u : 0u) | /* SCRATCH_EN */
-                               (4u << 1) |            /* USER_SGPR_COUNT = 4 */
-                               (1u << tgid_x) |       /* TGID_X_EN */
-                               (1u << tgid_y) |       /* TGID_Y_EN */
-                               (1u << tgid_z);         /* TGID_Z_EN */
+                               (4u << 1);              /* USER_SGPR_COUNT = 4 */
 
         /* kernel_code_properties */
         kd.kernel_code_properties = (1u << 1) |  /* ENABLE_SGPR_DISPATCH_PTR */
