@@ -1813,9 +1813,12 @@ int amdgpu_emit_elf(amd_module_t *A, const char *path)
                                     (1u << 27);    /* MEM_ORDERED (RDNA only) */
         }
 
-        /* compute_pgm_rsrc2 — V3+: TGID bits are reserved (CP sets them) */
+        /* compute_pgm_rsrc2 */
         kd.compute_pgm_rsrc2 = ((F->scratch_bytes > 0) ? 1u : 0u) | /* SCRATCH_EN */
-                               (4u << 1);              /* USER_SGPR_COUNT = 4 */
+                               (4u << 1) |             /* USER_SGPR_COUNT = 4 */
+                               (1u << 7) |             /* ENABLE_SGPR_WORKGROUP_ID_X */
+                               (1u << 8) |             /* ENABLE_SGPR_WORKGROUP_ID_Y */
+                               (1u << 9);              /* ENABLE_SGPR_WORKGROUP_ID_Z */
 
         /* kernel_code_properties */
         kd.kernel_code_properties = (1u << 1) |  /* ENABLE_SGPR_DISPATCH_PTR */
