@@ -34,7 +34,8 @@ int main(int argc, char *argv[])
         return 1;
     }
 
-    /* kernarg layout: {float *y, float *x, float a, int n} = 24 bytes */
+    /* kernarg layout must match BarraCUDA codegen (8-byte aligned args):
+     * {float *x @0, float *y @8, float a @16, pad @20, int n @24, pad @28} = 32 bytes */
     bc_kernel_t kern;
     rc = bc_load_kernel(&dev, hsaco, "saxpy", &kern);
     if (rc != BC_RT_OK) {
@@ -68,13 +69,16 @@ int main(int argc, char *argv[])
     bc_copy_h2d(&dev, d_x, h_x, N * sizeof(float));
     bc_copy_h2d(&dev, d_y, h_y, N * sizeof(float));
 
-    struct {
-        void    *y;
-        void    *x;
-        float    a;
-        uint32_t n;
+    struct __attribute__((packed)) {
+        void    *y;         /* @0  — first CUDA param */
+        void    *x;         /* @8  — second CUDA param */
+        float    a;         /* @16 — third CUDA param */
+        uint32_t _pad0;     /* @20 — 8-byte alignment padding */
+        uint32_t n;         /* @24 — fourth CUDA param */
+        uint32_t _pad1;     /* @28 — pad to 32 bytes */
     } args;
 
+    memset(&args, 0, sizeof(args));
     args.y = d_y;
     args.x = d_x;
     args.a = A_VAL;
