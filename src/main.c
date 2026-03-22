@@ -148,7 +148,7 @@ int main(int argc, char *argv[])
             { amd_target = AMD_TARGET_GFX942; amd_elfm = 0x54C; amd_chip = "gfx942"; } /* xnack=off sramecc=off */
         /* CDNA 4 (GFX9.5.0) */
         else if (strcmp(argv[i], "--gfx950") == 0)
-            { amd_target = AMD_TARGET_GFX950; amd_elfm = 0x4F; amd_chip = "gfx950"; }
+            { amd_target = AMD_TARGET_GFX950; amd_elfm = 0x54F; amd_chip = "gfx950"; } /* xnack=off sramecc=off */
         /* RDNA 2 (GFX10.3) */
         else if (strcmp(argv[i], "--gfx1030") == 0)
             { amd_target = AMD_TARGET_GFX1030; amd_elfm = 0x36; amd_chip = "gfx1030"; }

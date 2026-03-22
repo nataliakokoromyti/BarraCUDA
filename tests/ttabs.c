@@ -87,10 +87,9 @@ static void tab_gfx9(void)
 {
     int miss = 0;
     for (int i = 0; i < AMD_OP_COUNT; i++) {
-        if (amd_enc_table_gfx9[i].fmt == AMD_FMT_PSEUDO) continue;
-        if (amd_enc_table_gfx9[i].mnemonic == NULL) continue;
-        if (amd_enc_table_gfx9[i].fmt == 0 && amd_enc_table_gfx9[i].hw_opcode == 0
-            && amd_enc_table_gfx9[i].mnemonic == NULL) {
+        const amd_enc_entry_t *e = &amd_enc_table_gfx9[i];
+        if (e->fmt == AMD_FMT_PSEUDO) continue;
+        if (e->mnemonic == NULL || e->fmt == 0) {
             printf("  GFX9 missing: op %d\n", i);
             miss++;
         }

@@ -287,7 +287,7 @@ TH_REG("encode", enc_wait)
 
 static void enc_smem9(void)
 {
-    enc_setup(AMD_TARGET_GFX942);
+    enc_setup(AMD_TARGET_GFX950);
     minst_t *mi     = &A->minsts[0];
     mi->op          = AMD_S_LOAD_DWORD;
     mi->num_defs    = 1;
@@ -309,7 +309,7 @@ TH_REG("encode", enc_smem9)
 
 static void enc_endp9(void)
 {
-    enc_setup(AMD_TARGET_GFX942);
+    enc_setup(AMD_TARGET_GFX950);
     minst_t *mi  = &A->minsts[0];
     mi->op       = AMD_S_ENDPGM;
     mi->num_defs = 0;
@@ -328,7 +328,7 @@ TH_REG("encode", enc_endp9)
 
 static void enc_sop2_9(void)
 {
-    enc_setup(AMD_TARGET_GFX942);
+    enc_setup(AMD_TARGET_GFX950);
     minst_t *mi     = &A->minsts[0];
     mi->op          = AMD_S_ADD_U32;
     mi->num_defs    = 1;
@@ -351,7 +351,7 @@ TH_REG("encode", enc_sop2_9)
 
 static void enc_vop2_9(void)
 {
-    enc_setup(AMD_TARGET_GFX942);
+    enc_setup(AMD_TARGET_GFX950);
     minst_t *mi     = &A->minsts[0];
     mi->op          = AMD_V_ADD_F32;
     mi->num_defs    = 1;

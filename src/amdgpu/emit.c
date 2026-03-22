@@ -1498,8 +1498,14 @@ static void ra_gc(amd_module_t *A, uint32_t mf_idx)
         if (sgpr_start < AMD_KERN_MIN_RESERVED && F->is_kernel)
             sgpr_start = AMD_KERN_MIN_RESERVED;
         uint32_t K_sgpr = (AMD_MAX_SGPRS > sgpr_start) ? AMD_MAX_SGPRS - sgpr_start : 0;
-        /* gfx950: s10/s11 are unusable — reduce available colors */
-        if (A->target == AMD_TARGET_GFX950 && K_sgpr >= 2) K_sgpr -= 2;
+        /* gfx950: s10/s11 are unusable for SMEM. Only subtract colors if
+         * those registers are in the allocatable range [sgpr_start, MAX). */
+        if (A->target == AMD_TARGET_GFX950 && K_sgpr > 0) {
+            uint32_t banned = 0;
+            if (sgpr_start <= 10 && 10 < AMD_MAX_SGPRS) banned++;
+            if (sgpr_start <= 11 && 11 < AMD_MAX_SGPRS) banned++;
+            K_sgpr = (K_sgpr > banned) ? (K_sgpr - banned) : 0;
+        }
         uint32_t K_vgpr = (amd_max_vgpr > 0 && amd_max_vgpr < AMD_MAX_VGPRS)
                            ? (uint32_t)amd_max_vgpr : AMD_MAX_VGPRS;
 
