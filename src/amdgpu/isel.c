@@ -1218,6 +1218,9 @@ static void isel_global_ref(uint32_t idx, const bir_inst_t *I)
 
     uint16_t sbase = S.next_param_sgpr;
     if (sbase & 1) sbase++;
+    /* gfx950: s[10:11] is toxic for SMEM loads — skip it */
+    if (S.amd->target == AMD_TARGET_GFX950 && sbase == 10)
+        sbase = 12;
     if (sbase + 1 >= AMD_MAX_SGPRS) return;
     S.next_param_sgpr = sbase + 2;
 
@@ -1390,6 +1393,9 @@ static void isel_param(uint32_t idx, const bir_inst_t *I)
             if (base_sgpr + 1 >= AMD_MAX_SGPRS) return;
             /* Align to even SGPR for pair */
             if (base_sgpr & 1) base_sgpr++;
+            /* gfx950: s[10:11] is toxic for SMEM loads — skip it */
+            if (S.amd->target == AMD_TARGET_GFX950 && base_sgpr == 10)
+                base_sgpr = 12;
             S.next_param_sgpr = base_sgpr + 2;
 
             emit2(AMD_S_LOAD_DWORDX2, mop_sgpr(base_sgpr),

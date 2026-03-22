@@ -373,8 +373,12 @@ static void regalloc_linear(amd_module_t *A, uint32_t mf_idx)
     uint16_t sgpr_start = F->is_kernel ? F->first_alloc_sgpr : 0;
     if (sgpr_start < AMD_KERN_RESERVED_SGPR && F->is_kernel)
         sgpr_start = AMD_KERN_RESERVED_SGPR;
-    for (uint16_t r = AMD_MAX_SGPRS; r-- > sgpr_start; )
+    for (uint16_t r = AMD_MAX_SGPRS; r-- > sgpr_start; ) {
+        /* gfx950: s10/s11 crash on SMEM loads — exclude globally */
+        if (A->target == AMD_TARGET_GFX950 && (r == 10 || r == 11))
+            continue;
         RA.sgpr_free[RA.num_sgpr_free++] = (uint8_t)r;
+    }
     for (uint16_t r = AMD_MAX_VGPRS; r-- > 0; )
         RA.vgpr_free[RA.num_vgpr_free++] = (uint8_t)r;
 
@@ -849,6 +853,8 @@ static void regalloc_graphcolor(amd_module_t *A, uint32_t mf_idx)
         if (sgpr_start < AMD_KERN_RESERVED_SGPR && F->is_kernel)
             sgpr_start = AMD_KERN_RESERVED_SGPR;
         uint32_t K_sgpr = (AMD_MAX_SGPRS > sgpr_start) ? AMD_MAX_SGPRS - sgpr_start : 0;
+        /* gfx950: 2 fewer SGPRs available (s10/s11 excluded) */
+        if (A->target == AMD_TARGET_GFX950 && K_sgpr >= 2) K_sgpr -= 2;
         uint32_t K_vgpr = (amdgpu_max_vgprs > 0 && amdgpu_max_vgprs < AMD_MAX_VGPRS)
                            ? (uint32_t)amdgpu_max_vgprs : AMD_MAX_VGPRS;
 
@@ -1015,6 +1021,9 @@ static void regalloc_graphcolor(amd_module_t *A, uint32_t mf_idx)
                 }
                 uint16_t picked = 0xFFFF;
                 for (uint16_t r = sgpr_start; r < AMD_MAX_SGPRS; r++) {
+                    /* gfx950: s10/s11 crash on SMEM loads — skip */
+                    if (A->target == AMD_TARGET_GFX950 && (r == 10 || r == 11))
+                        continue;
                     if (!(used_sgpr[r / 32] & (1u << (r % 32)))) {
                         picked = r;
                         break;
@@ -1689,6 +1698,26 @@ static void mp_uint(uint8_t *buf, uint32_t *pos, uint32_t val)
     }
 }
 
+static void mp_bool(uint8_t *buf, uint32_t *pos, int val)
+{
+    if (*pos >= MP_BUF_MAX - 1) return;
+    buf[(*pos)++] = val ? 0xC3u : 0xC2u;
+}
+
+/* Emit one hidden-arg entry: fixmap(3) with .offset, .size, .value_kind */
+static void mp_hidden_arg(uint8_t *buf, uint32_t *pos,
+                          uint32_t offset, uint32_t size,
+                          const char *value_kind)
+{
+    mp_fixmap(buf, pos, 3);
+    mp_fixstr(buf, pos, ".offset");
+    mp_uint(buf, pos, offset);
+    mp_fixstr(buf, pos, ".size");
+    mp_uint(buf, pos, size);
+    mp_fixstr(buf, pos, ".value_kind");
+    mp_fixstr(buf, pos, value_kind);
+}
+
 /* ---- ELF Code Object Writer ---- */
 
 /* Local emit_dword for kernel descriptor padding (encode.c owns the
@@ -1795,7 +1824,7 @@ int amdgpu_emit_elf(amd_module_t *A, const char *path)
         mfunc_t *F = &A->mfuncs[fi];
         kd.group_segment_fixed_size = F->lds_bytes;
         kd.private_segment_fixed_size = F->scratch_bytes;
-        kd.kernarg_size = F->kernarg_bytes;
+        kd.kernarg_size = F->kernarg_bytes + 256; /* +256 for COV5 hidden args */
         kd.kernel_code_entry_byte_offset = 256; /* descriptor is 64 bytes, padded to 256 */
 
         /* compute_pgm_rsrc1 — VGPR granularity: 8 for CDNA, 8 for RDNA */
@@ -1806,6 +1835,7 @@ int amdgpu_emit_elf(amd_module_t *A, const char *path)
         uint32_t sgpr_blocks = (F->num_sgprs > 0) ? (uint32_t)((F->num_sgprs + 7) / 8 - 1) : 0;
         kd.compute_pgm_rsrc1 = (vgpr_blocks & 0x3F) |
                                ((sgpr_blocks & 0xF) << 6) |
+                               (0xFu << 16) |  /* FLOAT_MODE: denorms enabled */
                                (1u << 21) |  /* DX10_CLAMP */
                                (1u << 23);   /* IEEE_MODE */
         if (!cdna) {
@@ -1893,7 +1923,7 @@ int amdgpu_emit_elf(amd_module_t *A, const char *path)
         char kd_name[256];
         snprintf(kd_name, sizeof(kd_name), "%s.kd", name);
 
-        mp_fixmap(mp_buf, &mp_pos, 10);
+        mp_fixmap(mp_buf, &mp_pos, 15);
 
         mp_fixstr(mp_buf, &mp_pos, ".name");
         mp_str(mp_buf, &mp_pos, name);
@@ -1902,7 +1932,10 @@ int amdgpu_emit_elf(amd_module_t *A, const char *path)
         mp_str(mp_buf, &mp_pos, kd_name);
 
         mp_str(mp_buf, &mp_pos, ".kernarg_segment_size");
-        mp_uint(mp_buf, &mp_pos, F->kernarg_bytes);
+        mp_uint(mp_buf, &mp_pos, F->kernarg_bytes + 256); /* +256 for hidden args */
+
+        mp_str(mp_buf, &mp_pos, ".kernarg_segment_align");
+        mp_uint(mp_buf, &mp_pos, 8);
 
         mp_str(mp_buf, &mp_pos, ".group_segment_fixed_size");
         mp_uint(mp_buf, &mp_pos, F->lds_bytes);
@@ -1919,11 +1952,48 @@ int amdgpu_emit_elf(amd_module_t *A, const char *path)
         mp_fixstr(mp_buf, &mp_pos, ".vgpr_count");
         mp_uint(mp_buf, &mp_pos, F->num_vgprs);
 
+        mp_str(mp_buf, &mp_pos, ".agpr_count");
+        mp_uint(mp_buf, &mp_pos, 0);
+
+        mp_str(mp_buf, &mp_pos, ".sgpr_spill_count");
+        mp_uint(mp_buf, &mp_pos, 0);
+
+        mp_str(mp_buf, &mp_pos, ".vgpr_spill_count");
+        mp_uint(mp_buf, &mp_pos, 0);
+
         mp_str(mp_buf, &mp_pos, ".max_flat_workgroup_size");
-        mp_uint(mp_buf, &mp_pos, 256);
+        mp_uint(mp_buf, &mp_pos, 1024);
+
+        mp_str(mp_buf, &mp_pos, ".uses_dynamic_stack");
+        mp_bool(mp_buf, &mp_pos, 0);
 
         mp_fixstr(mp_buf, &mp_pos, ".args");
-        mp_fixarray(mp_buf, &mp_pos, 0); /* empty args for now */
+        mp_fixarray(mp_buf, &mp_pos, 14); /* 1 user + 13 hidden args */
+        {
+            /* User args as a single by_value blob */
+            mp_fixmap(mp_buf, &mp_pos, 3);
+            mp_fixstr(mp_buf, &mp_pos, ".offset");
+            mp_uint(mp_buf, &mp_pos, 0);
+            mp_fixstr(mp_buf, &mp_pos, ".size");
+            mp_uint(mp_buf, &mp_pos, F->kernarg_bytes);
+            mp_fixstr(mp_buf, &mp_pos, ".value_kind");
+            mp_fixstr(mp_buf, &mp_pos, "by_value");
+
+            uint32_t ho = F->kernarg_bytes; /* hidden args start after user args */
+            mp_hidden_arg(mp_buf, &mp_pos, ho +  0, 4, "hidden_block_count_x");
+            mp_hidden_arg(mp_buf, &mp_pos, ho +  4, 4, "hidden_block_count_y");
+            mp_hidden_arg(mp_buf, &mp_pos, ho +  8, 4, "hidden_block_count_z");
+            mp_hidden_arg(mp_buf, &mp_pos, ho + 12, 2, "hidden_group_size_x");
+            mp_hidden_arg(mp_buf, &mp_pos, ho + 14, 2, "hidden_group_size_y");
+            mp_hidden_arg(mp_buf, &mp_pos, ho + 16, 2, "hidden_group_size_z");
+            mp_hidden_arg(mp_buf, &mp_pos, ho + 18, 2, "hidden_remainder_x");
+            mp_hidden_arg(mp_buf, &mp_pos, ho + 20, 2, "hidden_remainder_y");
+            mp_hidden_arg(mp_buf, &mp_pos, ho + 22, 2, "hidden_remainder_z");
+            mp_hidden_arg(mp_buf, &mp_pos, ho + 24, 8, "hidden_global_offset_x");
+            mp_hidden_arg(mp_buf, &mp_pos, ho + 32, 8, "hidden_global_offset_y");
+            mp_hidden_arg(mp_buf, &mp_pos, ho + 40, 8, "hidden_global_offset_z");
+            mp_hidden_arg(mp_buf, &mp_pos, ho + 48, 2, "hidden_grid_dims");
+        }
 
         ki++;
     }
