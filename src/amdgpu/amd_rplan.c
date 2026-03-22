@@ -93,7 +93,7 @@ static void rp_scan(const bir_module_t *bir, const bir_func_t *F,
  * reads the memo. */
 static void rp_alloc(mfunc_t *MF, amd_target_t tgt, const rp_stat_t *st)
 {
-    int cdna = (tgt <= AMD_TARGET_GFX942);
+    int cdna = (tgt <= AMD_TARGET_GFX950);
 
     MF->exec_w   = cdna ? 1 : 0;
     MF->smem_hz  = cdna ? 1 : 0;
