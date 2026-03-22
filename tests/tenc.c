@@ -276,3 +276,93 @@ static void enc_wait(void)
     PASS();
 }
 TH_REG("encode", enc_wait)
+
+/* ---- GFX9 encoding tests ---- */
+
+/* ---- encode: GFX9 SMEM s_load_dword ---- */
+/* GFX9: DW0 [31:26]=0x30 [25:18]=OP(0x00) [17]=IMM(1) [16]=GLC(0)
+ *           [12:6]=SDATA(7) [5:0]=SBASE(2/2=1)
+ *       DW0 = 0xC00201C1
+ *       DW1 = offset (0) */
+
+static void enc_smem9(void)
+{
+    enc_setup(AMD_TARGET_GFX942);
+    minst_t *mi     = &A->minsts[0];
+    mi->op          = AMD_S_LOAD_DWORD;
+    mi->num_defs    = 1;
+    mi->num_uses    = 2;
+    mi->operands[0] = sgpr(7);   /* SDATA */
+    mi->operands[1] = sgpr(2);   /* SBASE (pair s[2:3], /2 = 1) */
+    mi->operands[2] = imm(0);    /* offset */
+
+    encode_function(A, 0);
+    CHEQX(dw(0), 0xC00201C1u);
+    CHEQX(dw(1), 0x00000000u);
+    PASS();
+}
+TH_REG("encode", enc_smem9)
+
+/* ---- encode: GFX9 s_endpgm ---- */
+/* GFX9 SOPP: same opcode as GFX10 (0x01)
+ * Expected: 0xBF810000 */
+
+static void enc_endp9(void)
+{
+    enc_setup(AMD_TARGET_GFX942);
+    minst_t *mi  = &A->minsts[0];
+    mi->op       = AMD_S_ENDPGM;
+    mi->num_defs = 0;
+    mi->num_uses = 0;
+
+    encode_function(A, 0);
+    CHEQX(dw(0), 0xBF810000u);
+    PASS();
+}
+TH_REG("encode", enc_endp9)
+
+/* ---- encode: GFX9 SOP2 s_add_u32 ---- */
+/* s_add_u32 s7, s2, s3 -- GFX9
+ * [31:30]=10 [29:23]=OP(0x00) [22:16]=SDST(7) [15:8]=SSRC1(3) [7:0]=SSRC0(2)
+ * Expected: 0x80070302 (same encoding format as GFX11) */
+
+static void enc_sop2_9(void)
+{
+    enc_setup(AMD_TARGET_GFX942);
+    minst_t *mi     = &A->minsts[0];
+    mi->op          = AMD_S_ADD_U32;
+    mi->num_defs    = 1;
+    mi->num_uses    = 2;
+    mi->operands[0] = sgpr(7);
+    mi->operands[1] = sgpr(2);
+    mi->operands[2] = sgpr(3);
+
+    encode_function(A, 0);
+    CHEQX(dw(0), 0x80070302u);
+    PASS();
+}
+TH_REG("encode", enc_sop2_9)
+
+/* ---- encode: GFX9 VOP2 v_add_f32 ---- */
+/* v_add_f32 v1, v2, v3 -- GFX9
+ * GFX9 opcode for v_add_f32 is 0x01 (same as GFX11)
+ * [31]=0 [30:25]=OP(0x01) [24:17]=VDST(1) [16:9]=VSRC1(3) [8:0]=SRC0(v2=256+2)
+ * Expected: 0x02020702 */
+
+static void enc_vop2_9(void)
+{
+    enc_setup(AMD_TARGET_GFX942);
+    minst_t *mi     = &A->minsts[0];
+    mi->op          = AMD_V_ADD_F32;
+    mi->num_defs    = 1;
+    mi->num_uses    = 2;
+    mi->operands[0] = vgpr(1);   /* VDST */
+    mi->operands[1] = vgpr(2);   /* SRC0 */
+    mi->operands[2] = vgpr(3);   /* VSRC1 */
+
+    encode_function(A, 0);
+    /* GFX9 VOP2 v_add_f32 OP=0x01: [30:25]=0x01, rest same layout */
+    CHEQX(dw(0), 0x02020702u);
+    PASS();
+}
+TH_REG("encode", enc_vop2_9)

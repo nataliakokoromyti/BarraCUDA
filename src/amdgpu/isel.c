@@ -650,6 +650,8 @@ static void snap_emit(void)
     /* Where shall we send the evidence? */
     uint16_t sb = S.next_param_sgpr;
     if (sb & 1) sb++;
+    /* gfx950: s[10:11] is toxic for SMEM loads — skip it */
+    if (S.amd->target == AMD_TARGET_GFX950 && sb == 10) sb = 12;
     S.next_param_sgpr = sb + 2;
     S.snap_base = sb;
 
@@ -1589,6 +1591,8 @@ static void isel_global_ref(uint32_t idx, const bir_inst_t *I)
 
     uint16_t sbase = S.next_param_sgpr;
     if (sbase & 1) sbase++;
+    /* gfx950: s[10:11] is toxic for SMEM loads — skip it */
+    if (S.amd->target == AMD_TARGET_GFX950 && sbase == 10) sbase = 12;
     if (sbase + 1 >= AMD_MAX_SGPRS) return;
     S.next_param_sgpr = sbase + 2;
 
@@ -1827,6 +1831,9 @@ static void isel_param(uint32_t idx, const bir_inst_t *I)
             if (base_sgpr + 1 >= AMD_MAX_SGPRS) return;
             /* Align to even SGPR for pair */
             if (base_sgpr & 1) base_sgpr++;
+            /* gfx950: s[10:11] is toxic for SMEM loads — skip it */
+            if (S.amd->target == AMD_TARGET_GFX950 && base_sgpr == 10)
+                base_sgpr = 12;
             S.next_param_sgpr = base_sgpr + 2;
 
             /* SNAP: note which drawer this param lives in */
@@ -1851,6 +1858,9 @@ static void isel_param(uint32_t idx, const bir_inst_t *I)
             uint16_t base_sgpr = S.next_param_sgpr;
             if (base_sgpr + 1 >= AMD_MAX_SGPRS) return;
             if (base_sgpr & 1) base_sgpr++;
+            /* gfx950: s[10:11] is toxic for SMEM loads — skip it */
+            if (S.amd->target == AMD_TARGET_GFX950 && base_sgpr == 10)
+                base_sgpr = 12;
             S.next_param_sgpr = base_sgpr + 2;
 
             /* SNAP: record which SGPR pair holds this param */
@@ -2351,7 +2361,7 @@ static void isel_function(uint32_t fi)
     /* Stamp resource plan — target decisions made once, right here.
      * Downstream reads MF fields, never interrogates the target enum. */
     {
-        int cdna = (A->target <= AMD_TARGET_GFX942);
+        int cdna = (A->target <= AMD_TARGET_GFX950);
         MF->exec_w   = cdna ? 1 : 0;
         MF->smem_hz  = cdna ? 1 : 0;
         MF->scr_afs  = cdna ? 1 : 0;

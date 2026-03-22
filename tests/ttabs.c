@@ -80,3 +80,68 @@ static void tab_diff(void)
     PASS();
 }
 TH_REG("tables", tab_diff)
+
+/* ---- tables: GFX9 completeness ---- */
+
+static void tab_gfx9(void)
+{
+    int miss = 0;
+    for (int i = 0; i < AMD_OP_COUNT; i++) {
+        if (amd_enc_table_gfx9[i].fmt == AMD_FMT_PSEUDO) continue;
+        if (amd_enc_table_gfx9[i].mnemonic == NULL) continue;
+        if (amd_enc_table_gfx9[i].fmt == 0 && amd_enc_table_gfx9[i].hw_opcode == 0
+            && amd_enc_table_gfx9[i].mnemonic == NULL) {
+            printf("  GFX9 missing: op %d\n", i);
+            miss++;
+        }
+    }
+    CHEQ(miss, 0);
+    PASS();
+}
+TH_REG("tables", tab_gfx9)
+
+/* ---- tables: GFX9 vs GFX10 opcode differences ---- */
+
+static void tab_diff9(void)
+{
+    /* s_and_b32: GFX9=0x0C, GFX10=0x0E */
+    CHEQ(amd_enc_table_gfx9[AMD_S_AND_B32].hw_opcode,    0x0C);
+    CHEQ(amd_enc_table_gfx10[AMD_S_AND_B32].hw_opcode,   0x0E);
+
+    /* v_add_u32: GFX9=0x34 (no carry), GFX10=0x34 */
+    CHEQ(amd_enc_table_gfx9[AMD_V_ADD_U32].hw_opcode,    0x34);
+
+    /* s_load_dword: same opcode across GFX9/10/11 */
+    CHEQ(amd_enc_table_gfx9[AMD_S_LOAD_DWORD].hw_opcode, 0x00);
+
+    PASS();
+}
+TH_REG("tables", tab_diff9)
+
+/* ---- tables: GFX9 _b64 ops exist (Wave64 support) ---- */
+
+static void tab_b64(void)
+{
+    CHECK(amd_enc_table_gfx9[AMD_S_AND_B64].mnemonic != NULL);
+    CHSTR(amd_enc_table_gfx9[AMD_S_AND_B64].mnemonic, "s_and_b64");
+    CHECK(amd_enc_table_gfx9[AMD_S_OR_B64].mnemonic != NULL);
+    CHSTR(amd_enc_table_gfx9[AMD_S_OR_B64].mnemonic, "s_or_b64");
+    CHECK(amd_enc_table_gfx9[AMD_S_AND_SAVEEXEC_B64].mnemonic != NULL);
+    CHSTR(amd_enc_table_gfx9[AMD_S_AND_SAVEEXEC_B64].mnemonic, "s_and_saveexec_b64");
+    PASS();
+}
+TH_REG("tables", tab_b64)
+
+/* ---- tables: MFMA opcodes present ---- */
+
+static void tab_mfma(void)
+{
+    CHECK(amd_enc_table_gfx9[AMD_V_MFMA_F32_32X32X8_F16].mnemonic != NULL);
+    CHSTR(amd_enc_table_gfx9[AMD_V_MFMA_F32_32X32X8_F16].mnemonic,
+          "v_mfma_f32_32x32x8f16");
+    CHECK(amd_enc_table_gfx9[AMD_V_MFMA_F32_16X16X16_F16].mnemonic != NULL);
+    CHSTR(amd_enc_table_gfx9[AMD_V_MFMA_F32_16X16X16_F16].mnemonic,
+          "v_mfma_f32_16x16x16f16");
+    PASS();
+}
+TH_REG("tables", tab_mfma)

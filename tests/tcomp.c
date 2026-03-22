@@ -7,15 +7,15 @@ static char obuf[TH_BUFSZ];
 
 /* ---- Helpers ---- */
 
-static const char *targets[] = { "--gfx1030", "", "--gfx1200" };
-static const char *tnames[]  = { "gfx1030", "gfx1100", "gfx1200" };
+static const char *targets[] = { "--gfx1030", "", "--gfx1200", "--gfx90a", "--gfx942", "--gfx950" };
+static const char *tnames[]  = { "gfx1030", "gfx1100", "gfx1200", "gfx90a", "gfx942", "gfx950" };
 
 static int compile_cu(const char *cu, const char *extra)
 {
     char cmd[TH_BUFSZ];
     const char *out = "test_out.hsaco";
 
-    for (int t = 0; t < 3; t++) {
+    for (int t = 0; t < 6; t++) {
         snprintf(cmd, TH_BUFSZ,
                  BC_BIN " --amdgpu-bin %s %s %s -o %s",
                  targets[t], extra, cu, out);

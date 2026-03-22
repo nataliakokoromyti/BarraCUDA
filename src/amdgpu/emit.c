@@ -649,7 +649,7 @@ void fin_regs(const amd_module_t *A, mfunc_t *F)
        The maths of sharing: 256 VGPRs divided among the waves you
        promised the hardware you'd run. Break the promise at your peril. */
     if (F->launch_bounds_max > 0 && F->launch_bounds_max < 1024) {
-        int w64 = (A->target <= AMD_TARGET_GFX942);
+        int w64 = (A->target <= AMD_TARGET_GFX950);
         uint32_t wsz = w64 ? 64u : 32u;
         uint32_t desired_waves = (F->launch_bounds_max + wsz - 1) / wsz;
         if (desired_waves > 0) {
@@ -681,6 +681,8 @@ static void ra_lin(amd_module_t *A, uint32_t mf_idx)
         sgpr_start = AMD_KERN_MIN_RESERVED;
     for (uint16_t r = AMD_MAX_SGPRS; r-- > sgpr_start; ) {
         if (r == RA_RELAY_S || r == RA_RELAY_S2) continue; /* reserved for spill relays */
+        /* gfx950: s10/s11 crash on SMEM loads — exclude globally */
+        if (A->target == AMD_TARGET_GFX950 && (r == 10 || r == 11)) continue;
         RA.sgpr_free[RA.num_sgpr_free++] = (uint8_t)r;
     }
 
@@ -1496,6 +1498,8 @@ static void ra_gc(amd_module_t *A, uint32_t mf_idx)
         if (sgpr_start < AMD_KERN_MIN_RESERVED && F->is_kernel)
             sgpr_start = AMD_KERN_MIN_RESERVED;
         uint32_t K_sgpr = (AMD_MAX_SGPRS > sgpr_start) ? AMD_MAX_SGPRS - sgpr_start : 0;
+        /* gfx950: s10/s11 are unusable — reduce available colors */
+        if (A->target == AMD_TARGET_GFX950 && K_sgpr >= 2) K_sgpr -= 2;
         uint32_t K_vgpr = (amd_max_vgpr > 0 && amd_max_vgpr < AMD_MAX_VGPRS)
                            ? (uint32_t)amd_max_vgpr : AMD_MAX_VGPRS;
 
@@ -1667,6 +1671,9 @@ static void ra_gc(amd_module_t *A, uint32_t mf_idx)
                 uint16_t picked = 0xFFFF;
                 for (uint16_t r = sgpr_start; r < AMD_MAX_SGPRS; r++) {
                     if (!(used_sgpr[r / 32] & (1u << (r % 32)))) {
+                        /* gfx950: s10/s11 crash on SMEM loads — skip */
+                        if (A->target == AMD_TARGET_GFX950 && (r == 10 || r == 11))
+                            continue;
                         picked = r;
                         break;
                     }
@@ -2025,10 +2032,10 @@ static void print_operand(amd_module_t *A, const moperand_t *op)
     case MOP_SPECIAL:
         switch (op->imm) {
         case AMD_SPEC_VCC:
-            asm_append(A, A->target <= AMD_TARGET_GFX942 ? "vcc" : "vcc_lo");
+            asm_append(A, A->target <= AMD_TARGET_GFX950 ? "vcc" : "vcc_lo");
             break;
         case AMD_SPEC_EXEC:
-            asm_append(A, A->target <= AMD_TARGET_GFX942 ? "exec" : "exec_lo");
+            asm_append(A, A->target <= AMD_TARGET_GFX950 ? "exec" : "exec_lo");
             break;
         case AMD_SPEC_SCC:       asm_append(A, "scc"); break;
         case AMD_SPEC_M0:        asm_append(A, "m0"); break;
@@ -2525,11 +2532,11 @@ int amdgpu_emit_elf(amd_module_t *A, const char *path)
             kd.compute_pgm_rsrc2 = rsrc2;
         }
 
-        /* compute_pgm_rsrc3 — ACCUM_OFFSET for CDNA (GFX90A/GFX942).
+        /* compute_pgm_rsrc3 — ACCUM_OFFSET for CDNA (GFX90A/GFX942/GFX950).
          * Tells the HW where ArchVGPRs end and AccVGPRs begin.
-         * GFX942 unified VGPRs: all are ArchVGPR, so offset = vgpr_blocks. */
+         * GFX942/GFX950 unified VGPRs: all are ArchVGPR, so offset = vgpr_blocks. */
         if (F->exec_w) {
-            uint32_t ao_gran = (A->target == AMD_TARGET_GFX942) ? 8u : 4u;
+            uint32_t ao_gran = (A->target >= AMD_TARGET_GFX942) ? 8u : 4u;
             uint32_t accum_off = (F->num_vgprs > 0)
                 ? (uint32_t)((F->num_vgprs + ao_gran - 1) / ao_gran - 1) : 0;
             kd.compute_pgm_rsrc3 = accum_off & 0x3F;
