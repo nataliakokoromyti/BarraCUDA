@@ -2104,6 +2104,7 @@ int amdgpu_emit_elf(amd_module_t *A, const char *path)
     /* 2: .note */
     shdrs[2].sh_name = note_name_off;
     shdrs[2].sh_type = SHT_NOTE;
+    shdrs[2].sh_flags = SHF_ALLOC;
     shdrs[2].sh_offset = note_off;
     shdrs[2].sh_size = note_len;
     shdrs[2].sh_addralign = 4;
