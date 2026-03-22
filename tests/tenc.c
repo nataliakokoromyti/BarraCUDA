@@ -276,3 +276,143 @@ static void enc_wait(void)
     PASS();
 }
 TH_REG("encode", enc_wait)
+
+/* ---- encode: GFX9 SMEM ---- */
+/* s_load_dword s7, s[2:3], 0 -- GFX9
+ * DW0: [31:26]=110000(0x30) [25:18]=OP(0x00) [17]=IMM(1) [12:6]=SDATA(7) [5:0]=SBASE(1)
+ *      = 0xC00201C1
+ * DW1: [20:0]=OFFSET(0) = 0x00000000
+ *
+ * GFX9 SMEM differs from GFX10/11: prefix 0x30 (not 0x3D), IMM flag at [17],
+ * no SOFFSET field. This is the encoding that keeps MI350X from launching
+ * into the wrong stratosphere. */
+
+static void enc_smem9(void)
+{
+    enc_setup(AMD_TARGET_GFX950);
+    minst_t *mi     = &A->minsts[0];
+    mi->op          = AMD_S_LOAD_DWORD;
+    mi->num_defs    = 1;
+    mi->num_uses    = 2;
+    mi->operands[0] = sgpr(7);
+    mi->operands[1] = sgpr(2);
+    mi->operands[2] = imm(0);
+
+    encode_function(A, 0);
+    CHEQX(dw(0), 0xC00201C1u);
+    CHEQX(dw(1), 0x00000000u);
+    PASS();
+}
+TH_REG("encode", enc_smem9)
+
+/* ---- encode: GFX9 global_load_dword ---- */
+/* global_load_dword v5, v2 -- GFX9 (no SADDR)
+ * DW0: [31:26]=0x37 [24:18]=OP(0x14) [15:14]=SEG(2=global) [12:0]=0
+ *      = 0xDC508000
+ * DW1: [31:24]=VDST(5) [23:16]=SADDR(0x7F=null for GFX9) [7:0]=ADDR(2)
+ *      = 0x057F0002
+ *
+ * GFX9 null SADDR=0x7F, GFX10=0x7D, GFX11=0x7C. AMD can't even agree
+ * on what "nobody home" looks like. */
+
+static void enc_glob9(void)
+{
+    enc_setup(AMD_TARGET_GFX950);
+    minst_t *mi     = &A->minsts[0];
+    mi->op          = AMD_GLOBAL_LOAD_DWORD;
+    mi->num_defs    = 1;
+    mi->num_uses    = 1;
+    mi->operands[0] = vgpr(5);
+    mi->operands[1] = vgpr(2);
+
+    encode_function(A, 0);
+    CHEQX(dw(0), 0xDC508000u);
+    CHEQX(dw(1), 0x057F0002u);
+    PASS();
+}
+TH_REG("encode", enc_glob9)
+
+/* ---- encode: GFX9 s_endpgm ---- */
+/* hw_op=0x01 (same as GFX10, not 0x30 like GFX11).
+ * Expected: 0xBF810000 */
+
+static void enc_endp9(void)
+{
+    enc_setup(AMD_TARGET_GFX950);
+    minst_t *mi  = &A->minsts[0];
+    mi->op       = AMD_S_ENDPGM;
+    mi->num_defs = 0;
+    mi->num_uses = 0;
+
+    encode_function(A, 0);
+    CHEQX(dw(0), 0xBF810000u);
+    PASS();
+}
+TH_REG("encode", enc_endp9)
+
+/* ---- encode: GFX9 SOP2 ---- */
+/* s_and_b32 s7, s2, s3 -- GFX9
+ * [31:30]=10 [29:23]=OP(0x0C) [22:16]=SDST(7) [15:8]=SSRC1(3) [7:0]=SSRC0(2)
+ * Expected: 0x86070302
+ *
+ * GFX9=0x0C, GFX10=0x0E, GFX11=0x16. They renumber just to keep us busy. */
+
+static void enc_sop2_9(void)
+{
+    enc_setup(AMD_TARGET_GFX950);
+    minst_t *mi     = &A->minsts[0];
+    mi->op          = AMD_S_AND_B32;
+    mi->num_defs    = 1;
+    mi->num_uses    = 2;
+    mi->operands[0] = sgpr(7);
+    mi->operands[1] = sgpr(2);
+    mi->operands[2] = sgpr(3);
+
+    encode_function(A, 0);
+    CHEQX(dw(0), 0x86070302u);
+    PASS();
+}
+TH_REG("encode", enc_sop2_9)
+
+/* ---- encode: GFX9 VOP2 ---- */
+/* v_add_f32 v1, v2, v3 -- GFX9
+ * [30:25]=OP(0x01) [24:17]=VDST(1) [16:9]=VSRC1(3) [8:0]=SRC0(v2=258)
+ * Expected: 0x02020702
+ *
+ * GFX9 hw_op=0x01 vs GFX11 hw_op=0x03. */
+
+static void enc_vop2_9(void)
+{
+    enc_setup(AMD_TARGET_GFX950);
+    minst_t *mi     = &A->minsts[0];
+    mi->op          = AMD_V_ADD_F32;
+    mi->num_defs    = 1;
+    mi->num_uses    = 2;
+    mi->operands[0] = vgpr(1);
+    mi->operands[1] = vgpr(2);
+    mi->operands[2] = vgpr(3);
+
+    encode_function(A, 0);
+    CHEQX(dw(0), 0x02020702u);
+    PASS();
+}
+TH_REG("encode", enc_vop2_9)
+
+/* ---- encode: GFX9 s_waitcnt vmcnt(0) ---- */
+/* Same encoding as GFX10: hw_op=0x0C, SIMM16=0x3F70
+ * Expected: 0xBF8C3F70 */
+
+static void enc_wait9(void)
+{
+    enc_setup(AMD_TARGET_GFX950);
+    minst_t *mi  = &A->minsts[0];
+    mi->op       = AMD_S_WAITCNT;
+    mi->num_defs = 0;
+    mi->num_uses = 0;
+    mi->flags    = AMD_WAIT_VMCNT0;
+
+    encode_function(A, 0);
+    CHEQX(dw(0), 0xBF8C3F70u);
+    PASS();
+}
+TH_REG("encode", enc_wait9)
