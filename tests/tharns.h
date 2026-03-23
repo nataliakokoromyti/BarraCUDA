@@ -16,7 +16,7 @@ typedef struct {
 } tcase_t;
 
 #define TH_MAXTS 256
-#define TH_BUFSZ 4096
+#define TH_BUFSZ 16384
 
 extern tcase_t th_list[];
 extern int th_cnt;
