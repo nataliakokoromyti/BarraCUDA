@@ -63,6 +63,10 @@ typedef enum {
 #define EF_AMDGPU_MACH_AMDGCN_GFX1100  0x41
 #define EF_AMDGPU_MACH_AMDGCN_GFX1200  0x48
 
+/* ELF feature flags (v4 encoding, GFX9.4+) */
+#define EF_AMDGPU_FEATURE_XNACK_OFF_V4   0x100
+#define EF_AMDGPU_FEATURE_SRAMECC_OFF_V4  0x400
+
 /* ---- Instruction Encoding Formats ---- */
 
 typedef enum {

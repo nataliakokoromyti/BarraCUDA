@@ -277,6 +277,61 @@ static void enc_wait(void)
 }
 TH_REG("encode", enc_wait)
 
+/* ---- encode: gfx950 SMEM never uses s[10:11] as SBASE ---- */
+/* Regression: s[10:11] causes MEMORY_APERTURE_VIOLATION on gfx950
+ * SMEM loads. Allocator + isel must never produce SBASE=5 (= reg 10/2).
+ * Compile a real kernel, scan the binary for GFX9 SMEM instructions,
+ * and verify none address through s[10:11]. */
+
+static char s1011_obuf[TH_BUFSZ];
+
+static void enc_s1011(void)
+{
+    const char *out = "test_s1011.hsaco";
+    char cmd[TH_BUFSZ];
+    snprintf(cmd, TH_BUFSZ,
+             BC_BIN " --gfx950 --amdgpu-bin tests/vector_add.cu -o %s", out);
+    int rc = th_run(cmd, s1011_obuf, TH_BUFSZ);
+    CHEQ(rc, 0);
+    CHECK(th_exist(out));
+
+    FILE *fp = fopen(out, "rb");
+    CHECK(fp != NULL);
+    fseek(fp, 0, SEEK_END);
+    long fsize = ftell(fp);
+    fseek(fp, 0, SEEK_SET);
+
+    unsigned char *buf = (unsigned char *)malloc((size_t)fsize);
+    CHECK(buf != NULL);
+    size_t nr = fread(buf, 1, (size_t)fsize, fp);
+    fclose(fp);
+    CHECK((long)nr == fsize);
+
+    /* GFX9 SMEM DW0: [31:26]=110000 (0x30). SBASE = DW0[5:0].
+     * s[10:11] -> SBASE=5: must never appear. */
+    int found_smem = 0;
+    for (long i = 0; i + 3 < fsize; i += 4) {
+        uint32_t dw;
+        memcpy(&dw, buf + i, 4);
+        if ((dw >> 26) == 0x30) {
+            found_smem++;
+            if ((dw & 0x3F) == 5) {
+                printf("  SMEM at offset 0x%lx uses SBASE=5 (s[10:11])\n", i);
+                free(buf);
+                remove(out);
+                CHECK(0);
+            }
+        }
+    }
+    /* Sanity: vector_add.cu must have at least one SMEM (kernarg loads) */
+    CHECK(found_smem > 0);
+
+    free(buf);
+    remove(out);
+    PASS();
+}
+TH_REG("encode", enc_s1011)
+
 /* ---- GFX9 encoding tests ---- */
 
 /* ---- encode: GFX9 SMEM s_load_dword ---- */
