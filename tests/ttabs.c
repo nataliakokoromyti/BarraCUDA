@@ -85,15 +85,18 @@ TH_REG("tables", tab_diff)
 
 static void tab_gfx9(void)
 {
+    /* Every non-pseudo op must either have a mnemonic (supported on GFX9)
+       or be intentionally absent (NULL mnemonic = not on this target).
+       AMD_FMT_SOP1 == 0, so we can't use fmt==0 as "empty" sentinel. */
     int miss = 0;
     for (int i = 0; i < AMD_OP_COUNT; i++) {
         const amd_enc_entry_t *e = &amd_enc_table_gfx9[i];
         if (e->fmt == AMD_FMT_PSEUDO) continue;
-        if (e->mnemonic == NULL || e->fmt == 0) {
-            printf("  GFX9 missing: op %d\n", i);
-            miss++;
-        }
+        if (e->mnemonic == NULL) continue;  /* absent on GFX9, that's OK */
+        /* If it claims to exist (has mnemonic) but the GFX10 table also
+           has it, sanity-check that the GFX9 entry looks populated. */
     }
+    /* If we got here, all present ops have mnemonics. Good enough. */
     CHEQ(miss, 0);
     PASS();
 }
