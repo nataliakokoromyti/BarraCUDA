@@ -311,7 +311,8 @@ static void encode_vopc(amd_module_t *A, const minst_t *mi, uint16_t hw_op)
 static void encode_ds(amd_module_t *A, const minst_t *mi, uint16_t hw_op)
 {
     /* DS: 2 dwords
-       DW0: [31:26]=110110 [25:18]=OP [17:16]=GDS [15:0]=OFFSET
+       DW0: [31:26]=110110 [25:18]=OP [17]=GDS [15:0]=OFFSET (GFX9)
+             gfx950: OP shifts to [24:17], bit[25]=GDS
        DW1: [31:24]=VDST [23:16]=DATA1 [15:8]=DATA0 [7:0]=ADDR */
     uint8_t vdst = 0, addr = 0, data0 = 0;
     if (mi->num_defs > 0 && mi->operands[0].kind == MOP_VGPR)
@@ -330,7 +331,9 @@ static void encode_ds(amd_module_t *A, const minst_t *mi, uint16_t hw_op)
         mi->operands[last_use].kind == MOP_IMM)
         offset = (uint16_t)mi->operands[last_use].imm;
 
-    uint32_t dw0 = (0x36u << 26) | ((uint32_t)(hw_op & 0xFF) << 18) | offset;
+    /* gfx950: DS opcode field shifts to [24:17] (was [25:18] on prior GFX9) */
+    uint32_t op_shift = (A->target == AMD_TARGET_GFX950) ? 17u : 18u;
+    uint32_t dw0 = (0x36u << 26) | ((uint32_t)(hw_op & 0xFF) << op_shift) | offset;
     uint32_t dw1 = ((uint32_t)vdst << 24) | ((uint32_t)data0 << 8) | addr;
     emit_dword(A, dw0);
     emit_dword(A, dw1);

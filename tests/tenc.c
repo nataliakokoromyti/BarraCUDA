@@ -238,6 +238,30 @@ static void enc_ds(void)
 }
 TH_REG("encode", enc_ds)
 
+/* ---- encode: DS gfx950 ---- */
+/* gfx950 shifts DS opcode to [24:17] (was [25:18]).
+ * ds_read_b32 v5, v2:
+ * DW0: [31:26]=0x36 [24:17]=OP(0x36)
+ *      = 0xD86C0000  (vs 0xD8D80000 on other GFX9)
+ * DW1: same as other GFX9 */
+
+static void enc_ds_950(void)
+{
+    enc_setup(AMD_TARGET_GFX950);
+    minst_t *mi     = &A->minsts[0];
+    mi->op          = AMD_DS_READ_B32;
+    mi->num_defs    = 1;
+    mi->num_uses    = 1;
+    mi->operands[0] = vgpr(5);   /* VDST */
+    mi->operands[1] = vgpr(2);   /* ADDR */
+
+    encode_function(A, 0);
+    CHEQX(dw(0), 0xD86C0000u);  /* opcode 0x36 at bits[24:17] */
+    CHEQX(dw(1), 0x05000002u);
+    PASS();
+}
+TH_REG("encode", enc_ds_950)
+
 /* ---- encode: s_endpgm ---- */
 /* GFX10: SOPP hw_op=0x01, SIMM16=0
  * Expected: 0xBF810000 */
