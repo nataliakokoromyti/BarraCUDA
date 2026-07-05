@@ -327,6 +327,57 @@ static void tt_lower_math_intrinsics(void)
 }
 TH_REG("triton", tt_lower_math_intrinsics)
 
+static void tt_sema_math_submodule_intrinsics(void)
+{
+    int rc = tt_run("--triton --sema tests/tri_math_submodule.py");
+    CHEQ(rc, 0);
+    CHECK(strstr(obuf, "module(tl.math)") != NULL);
+    CHECK(strstr(obuf, "module(tl.extra.libdevice)") != NULL);
+    CHECK(strstr(obuf, "intrinsic(exp)") != NULL);
+    CHECK(strstr(obuf, "intrinsic(log)") != NULL);
+    CHECK(strstr(obuf, "intrinsic(sqrt)") != NULL);
+    CHECK(strstr(obuf, "E080") == NULL);
+    PASS();
+}
+TH_REG("triton", tt_sema_math_submodule_intrinsics)
+
+static void tt_sema_math_submodule_unknown(void)
+{
+    int rc = tt_run("--triton --sema tests/tri_math_submodule_bad.py");
+    CHNE(rc, 0);
+    CHECK(strstr(obuf, "E080") != NULL);
+    CHECK(strstr(obuf, "unknown intrinsic: tl.math.not_real") != NULL);
+    PASS();
+}
+TH_REG("triton", tt_sema_math_submodule_unknown)
+
+static void tt_lower_math_submodule_intrinsics(void)
+{
+    int rc = tt_run("--triton --ir tests/tri_math_submodule.py");
+    CHEQ(rc, 0);
+    CHECK(strstr(obuf, "exp2 ") != NULL);
+    CHECK(strstr(obuf, "log2 ") != NULL);
+    CHECK(strstr(obuf, "sqrt ") != NULL);
+    CHECK(strstr(obuf, "E080") == NULL);
+    CHECK(strstr(obuf, "E095") == NULL);
+    PASS();
+}
+TH_REG("triton", tt_lower_math_submodule_intrinsics)
+
+static void tt_lower_math_submodule_aliases(void)
+{
+    int rc = tt_run("--triton --ir tests/tri_math_submodule_aliases.py");
+    CHEQ(rc, 0);
+    CHECK(strstr(obuf, "exp2 ") != NULL);
+    CHECK(strstr(obuf, "log2 ") != NULL);
+    CHECK(strstr(obuf, "sin ") != NULL);
+    CHECK(strstr(obuf, "cos ") != NULL);
+    CHECK(strstr(obuf, "E080") == NULL);
+    CHECK(strstr(obuf, "E095") == NULL);
+    PASS();
+}
+TH_REG("triton", tt_lower_math_submodule_aliases)
+
 static void tt_lower_where_select(void)
 {
     int rc = tt_run("--triton --ir tests/tri_where.py");

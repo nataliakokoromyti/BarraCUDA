@@ -67,6 +67,62 @@ static const tn_intrinsic_entry_t tn_intrinsics[] = {
     {"minimum",         TN_TLI_MINIMUM,       0},
     {"fdiv",            TN_TLI_FDIV,          0},
     {"cdiv",            TN_TLI_CDIV,          0},
+
+    /* Nested Triton namespaces resolve through module Attr nodes and
+     * then land back on the same intrinsic ids the lowerer already
+     * understands. Keep canonical tl.* names before aliases. */
+    {"math.exp",        TN_TLI_EXP,           0},
+    {"math.exp2",       TN_TLI_EXP2,          0},
+    {"math.log",        TN_TLI_LOG,           0},
+    {"math.log2",       TN_TLI_LOG2,          0},
+    {"math.sin",        TN_TLI_SIN,           0},
+    {"math.cos",        TN_TLI_COS,           0},
+    {"math.tan",        TN_TLI_TAN,           0},
+    {"math.tanh",       TN_TLI_TANH,          0},
+    {"math.sqrt",       TN_TLI_SQRT,          0},
+    {"math.rsqrt",      TN_TLI_RSQRT,         0},
+    {"math.abs",        TN_TLI_ABS,           0},
+    {"math.floor",      TN_TLI_FLOOR,         0},
+    {"math.ceil",       TN_TLI_CEIL,          0},
+    {"math.erf",        TN_TLI_ERF,           0},
+    {"math.maximum",    TN_TLI_MAXIMUM,       0},
+    {"math.minimum",    TN_TLI_MINIMUM,       0},
+    {"math.fdiv",       TN_TLI_FDIV,          0},
+    {"math.cdiv",       TN_TLI_CDIV,          0},
+
+    {"extra.libdevice.exp",       TN_TLI_EXP,     0},
+    {"extra.libdevice.expf",      TN_TLI_EXP,     0},
+    {"extra.libdevice.fast_expf", TN_TLI_EXP,     0},
+    {"extra.libdevice.exp2",      TN_TLI_EXP2,    0},
+    {"extra.libdevice.exp2f",     TN_TLI_EXP2,    0},
+    {"extra.libdevice.log",       TN_TLI_LOG,     0},
+    {"extra.libdevice.logf",      TN_TLI_LOG,     0},
+    {"extra.libdevice.log2",      TN_TLI_LOG2,    0},
+    {"extra.libdevice.log2f",     TN_TLI_LOG2,    0},
+    {"extra.libdevice.sin",       TN_TLI_SIN,     0},
+    {"extra.libdevice.sinf",      TN_TLI_SIN,     0},
+    {"extra.libdevice.cos",       TN_TLI_COS,     0},
+    {"extra.libdevice.cosf",      TN_TLI_COS,     0},
+    {"extra.libdevice.tan",       TN_TLI_TAN,     0},
+    {"extra.libdevice.tanf",      TN_TLI_TAN,     0},
+    {"extra.libdevice.tanh",      TN_TLI_TANH,    0},
+    {"extra.libdevice.tanhf",     TN_TLI_TANH,    0},
+    {"extra.libdevice.sqrt",      TN_TLI_SQRT,    0},
+    {"extra.libdevice.sqrtf",     TN_TLI_SQRT,    0},
+    {"extra.libdevice.rsqrt",     TN_TLI_RSQRT,   0},
+    {"extra.libdevice.rsqrtf",    TN_TLI_RSQRT,   0},
+    {"extra.libdevice.abs",       TN_TLI_ABS,     0},
+    {"extra.libdevice.fabs",      TN_TLI_ABS,     0},
+    {"extra.libdevice.fabsf",     TN_TLI_ABS,     0},
+    {"extra.libdevice.floor",     TN_TLI_FLOOR,   0},
+    {"extra.libdevice.floorf",    TN_TLI_FLOOR,   0},
+    {"extra.libdevice.ceil",      TN_TLI_CEIL,    0},
+    {"extra.libdevice.ceilf",     TN_TLI_CEIL,    0},
+    {"extra.libdevice.erf",       TN_TLI_ERF,     0},
+    {"extra.libdevice.erff",      TN_TLI_ERF,     0},
+    {"extra.libdevice.fmaxf",     TN_TLI_MAXIMUM, 0},
+    {"extra.libdevice.fminf",     TN_TLI_MINIMUM, 0},
+    {"extra.libdevice.fdividef",  TN_TLI_FDIV,    0},
     {"static_assert",   TN_TLI_STATIC_ASSERT, 0},
     {"static_print",    TN_TLI_STATIC_PRINT,  0},
     {"device_assert",   TN_TLI_DEVICE_ASSERT, 0},
@@ -118,7 +174,7 @@ static void tn_intrinsic_names_init(void)
     built = 1;
     for (int i = 0; tn_intrinsics[i].name != NULL; i++) {
         int id = tn_intrinsics[i].id;
-        if (id > 0 && id < TN_TLI_COUNT)
+        if (id > 0 && id < TN_TLI_COUNT && tn_intrinsic_names[id] == NULL)
             tn_intrinsic_names[id] = tn_intrinsics[i].name;
     }
 }
@@ -142,6 +198,31 @@ const char *tn_sym_kind_name(int kind)
 {
     if (kind < 0 || kind >= TN_SYM_KIND_COUNT) return "?";
     return tn_sym_kind_names[kind];
+}
+
+static const char *s_module_name(int mod_id)
+{
+    switch (mod_id) {
+    case TN_MOD_NONE:               return "none";
+    case TN_MOD_TRITON:             return "triton";
+    case TN_MOD_TL:                 return "tl";
+    case TN_MOD_MATH:               return "math";
+    case TN_MOD_TL_MATH:            return "tl.math";
+    case TN_MOD_TL_EXTRA:           return "tl.extra";
+    case TN_MOD_TL_EXTRA_LIBDEVICE: return "tl.extra.libdevice";
+    default:                        return "?";
+    }
+}
+
+static const char *s_module_intrinsic_prefix(int mod_id)
+{
+    switch (mod_id) {
+    case TN_MOD_TL:
+    case TN_MOD_MATH:               return "";
+    case TN_MOD_TL_MATH:            return "math";
+    case TN_MOD_TL_EXTRA_LIBDEVICE: return "extra.libdevice";
+    default:                        return NULL;
+    }
 }
 
 /* ---- Scope stack ----
@@ -377,11 +458,45 @@ static void s_handle_import(tn_sema_t *S, uint32_t node_idx)
     }
 }
 
-/* For an Attr node, decide if it is a tl.* (or math.*) intrinsic
- * reference and annotate accordingly. The check is: kids[0] is a
- * Name that resolved to a TL or MATH module symbol, and the
- * attribute name (token n->tok_off + n->flags) is in the
- * intrinsic table. */
+static int s_tok_eq(const tn_parse_t *P, const tn_tok_t *t, const char *lit)
+{
+    uint32_t len = (uint32_t)strlen(lit);
+    return t->len == len && memcmp(P->lex->src + t->off, lit, len) == 0;
+}
+
+static int s_submodule_attr(const tn_parse_t *P, int mod_id,
+                            const tn_tok_t *t)
+{
+    if (mod_id == TN_MOD_TL) {
+        if (s_tok_eq(P, t, "math"))  return TN_MOD_TL_MATH;
+        if (s_tok_eq(P, t, "extra")) return TN_MOD_TL_EXTRA;
+    }
+    if (mod_id == TN_MOD_TL_EXTRA && s_tok_eq(P, t, "libdevice"))
+        return TN_MOD_TL_EXTRA_LIBDEVICE;
+    return TN_MOD_NONE;
+}
+
+static int s_lookup_module_intrinsic(const tn_parse_t *P, int mod_id,
+                                     const tn_tok_t *t, int *is_type)
+{
+    const char *prefix = s_module_intrinsic_prefix(mod_id);
+    if (prefix == NULL) return TN_TLI_NONE;
+    if (prefix[0] == '\0')
+        return tn_intrinsic_lookup(P->lex->src + t->off, t->len, is_type);
+
+    char name[128];
+    uint32_t plen = (uint32_t)strlen(prefix);
+    if (plen + 1 + t->len >= sizeof(name)) return TN_TLI_NONE;
+    memcpy(name, prefix, plen);
+    name[plen] = '.';
+    memcpy(name + plen + 1, P->lex->src + t->off, t->len);
+    name[plen + 1 + t->len] = '\0';
+    return tn_intrinsic_lookup(name, plen + 1 + t->len, is_type);
+}
+
+/* For an Attr node, decide if it is a module attribute (`tl.math`,
+ * `tl.extra.libdevice`) or an intrinsic reference (`tl.exp`,
+ * `tl.math.exp`, `tl.extra.libdevice.fast_expf`) and annotate it. */
 
 static void s_resolve_attr(tn_sema_t *S, uint32_t node_idx)
 {
@@ -393,16 +508,21 @@ static void s_resolve_attr(tn_sema_t *S, uint32_t node_idx)
     if (base == 0 || base >= P->num_nodes) return;
     if (S->node_sym_kind[base] != TN_SYM_MODULE) return;
     int mod_id = (int)S->node_sym_aux[base];
-    if (mod_id != TN_MOD_TL && mod_id != TN_MOD_MATH) return;
+    if (mod_id == TN_MOD_NONE || mod_id == TN_MOD_TRITON) return;
 
     uint32_t attr_tok = n->tok_off + n->flags;
     if (attr_tok >= P->lex->num_tokens) return;
     const tn_tok_t *t = &P->lex->tokens[attr_tok];
     if (t->kind != TN_TOK_IDENT) return;
 
+    int submod = s_submodule_attr(P, mod_id, t);
+    if (submod != TN_MOD_NONE) {
+        s_annotate(S, node_idx, TN_SYM_MODULE, (uint32_t)submod);
+        return;
+    }
+
     int is_type = 0;
-    int id = tn_intrinsic_lookup(P->lex->src + t->off,
-                                 t->len, &is_type);
+    int id = s_lookup_module_intrinsic(P, mod_id, t, &is_type);
     if (id == TN_TLI_NONE) {
         char nb[64];
         uint32_t nl = t->len < 60 ? t->len : 60;
@@ -411,7 +531,7 @@ static void s_resolve_attr(tn_sema_t *S, uint32_t node_idx)
         char msg[128];
         snprintf(msg, sizeof(msg),
                  "unknown intrinsic: %s.%s",
-                 mod_id == TN_MOD_TL ? "tl" : "math", nb);
+                 s_module_name(mod_id), nb);
         s_err(S, 80, t, msg);
         s_annotate(S, node_idx, TN_SYM_UNBOUND, 0);
         return;
@@ -1414,12 +1534,8 @@ static void s_dump_node(const tn_sema_t *S, uint32_t idx,
                     tn_sym_kind_name(kind),
                     tn_intrinsic_name((int)S->node_sym_aux[idx]));
         } else if (kind == TN_SYM_MODULE) {
-            static const char *mod_names[TN_MOD_COUNT] = {
-                "none", "triton", "tl", "math"
-            };
             uint32_t m = S->node_sym_aux[idx];
-            fprintf(out, " -> module(%s)",
-                    m < TN_MOD_COUNT ? mod_names[m] : "?");
+            fprintf(out, " -> module(%s)", s_module_name((int)m));
         } else if (kind != 0) {
             fprintf(out, " -> %s", tn_sym_kind_name(kind));
         }
@@ -1437,6 +1553,9 @@ static void s_dump_node(const tn_sema_t *S, uint32_t idx,
             fprintf(out, " -> %s(%s)",
                     tn_sym_kind_name(kind),
                     tn_intrinsic_name((int)S->node_sym_aux[idx]));
+        } else if (kind == TN_SYM_MODULE) {
+            uint32_t m = S->node_sym_aux[idx];
+            fprintf(out, " -> module(%s)", s_module_name((int)m));
         }
     }
 

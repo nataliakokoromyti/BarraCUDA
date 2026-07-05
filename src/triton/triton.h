@@ -318,6 +318,9 @@ enum {
     TN_MOD_TRITON,          /* `import triton` */
     TN_MOD_TL,              /* `import triton.language as tl` */
     TN_MOD_MATH,            /* `import math` (rare in kernels) */
+    TN_MOD_TL_MATH,         /* `tl.math` */
+    TN_MOD_TL_EXTRA,        /* `tl.extra` */
+    TN_MOD_TL_EXTRA_LIBDEVICE, /* `tl.extra.libdevice` */
     TN_MOD_COUNT
 };
 
